@@ -14,8 +14,8 @@ $post['ownSum'] = $params['ownSum'];
 $post['phoneNumber'] = strval($params['phoneNumber']);
 $post['skipClaimVerification'] = $params['skipClaimVerification'];
 $post['createClaimsByRelatedBankProducts'] = true;
-$post['сlientRedirectUrl'] = str_replace('#ORDER_ID', $params['orderId'], $params['PB_CLIENT_REDIRECT']);
-$post['claimStatusChangedСallbackUrl'] = $params['PB_STATUS_REDIRECT'];
+$post['clientRedirectUrl'] = str_replace('#ORDER_ID', $params['orderId'], $params['PB_CLIENT_REDIRECT']);
+$post['claimStatusChangedCallbackUrl'] = $params['PB_STATUS_REDIRECT'];
 $post['products'] = $params['products'];
 
 foreach ($post['products'] as $key => $products) {
@@ -79,7 +79,7 @@ $arr1 = json_decode($result1, true);
     </a>
 <?php }?>
 <?php if ($params['arr']['responseException']['exceptionMessage']) {
-    echo '<input name="" class="btn btn-default"  type="button" value="' . $params['arr']['responseException']['exceptionMessage'] . '">';
+    echo '<input name="" class="btn btn-default"  type="button" value="' . Loc::getMessage('PB_ERROR_MESSAGE_UNDEFIND') . '">';
 }?>
       <!-- <pre style="white-space: pre-wrap;">
             <?php // print_r($params);;?>

@@ -190,10 +190,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
                     <?php }?>
                     <?php }?>
 
-                    <!--<tr>
-                        <pre style="width: 320px">        <?php print_r($current_settings);?>
-                        </pre>
-                        </tr>-->
+                  
                     <?php $tabControl->BeginNextTab();?>
                     <?php $tabControl->Buttons();?>
                     <input type="submit" name="Update" value="<?=GetMessage("MAIN_SAVE");?>" title="<?=GetMessage("MAIN_OPT_SAVE_TITLE");?>" class="adm-btn-save">

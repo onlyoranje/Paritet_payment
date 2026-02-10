@@ -18,10 +18,7 @@ $PB_CONFIG = array(
         'BYN' => 933
     ),
     'MODULE_VERSION' => $arModuleVersion['VERSION'],
-    'DISCOUNT_HELPER' => false,
-    'IGNORE_PRODUCT_TAX' => false,
-    "MEASUREMENT_NAME" => 'p', //FFD v.1.05
-    "MEASUREMENT_CODE" => 0, //FFD v.1.2
+    
 );
 
 
