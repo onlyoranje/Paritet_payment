@@ -41,6 +41,8 @@ $current_settings = array(
     'OPTION_PROD_URL' => COption::GetOptionString($moduleID, 'OPTION_PROD_URL'),
     'OPTION_BANK_PRODUCT_ID' => unserialize(COption::GetOptionString($moduleID, 'OPTION_BANK_PRODUCT_ID')),
 );
+if (!$current_settings['OPTION_PROD_URL']) $current_settings['OPTION_PROD_URL']='https://partner-loans.paritetbank.by/vendor-api/';
+if (!$current_settings['OPTION_BANK_PRODUCT_ID']) $current_settings['OPTION_BANK_PRODUCT_ID']=[];
 $tabControl = new CAdminTabControl("tabControl", array(
     array("DIV" => "edit1", "TAB" => Loc::getMessage('PB_TAB_NAME'), "ICON" => "blog_settings", "TITLE" => Loc::getMessage('PB_TAB_TITLE')),
 ));
@@ -139,7 +141,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
     $result = curl_exec($process);
     curl_close($process);
     $arr = json_decode($result, true);
-
+    if (is_array($arr)){
     foreach ($arr['result'] as $point) {
         ?>
                     <tr>
@@ -150,6 +152,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
                             <?=$point['salePointName'];?>
                         </td>
                     </tr>
+                    <?php }?>
                     <?php }?>
                     <tr class="heading">
                         <td colspan="2">
@@ -166,12 +169,19 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
         $result = curl_exec($process);
         curl_close($process);
         $arr = json_decode($result, true);
-        asort($arr['result']);
-        foreach ($arr['result'] as $key => $BankProduct) {
+
+        foreach ($arr['result'] as $Bank_Product) {
+           $BankProducts[$Bank_Product['id']] = $Bank_Product;
+        }
+
+        asort($BankProducts);
+
+        if (is_array($BankProducts)){
+        foreach ($BankProducts as $key => $BankProduct) {
             ?>
                     <tr>
                         <td width="50%" class="adm-detail-content-cell-l">
-                            <input id="BankProduct_<?=$key;?>" name="OPTION_BANK_PRODUCT_ID[<?=$BankProduct['id'];?>]" type="checkbox" value="<?=$BankProduct['name'];?>" <?=(in_array($BankProduct['id'], array_keys($current_settings['OPTION_BANK_PRODUCT_ID']))) ? 'checked' : '';?>>
+                            <input id="BankProduct_<?=$key;?>" name="OPTION_BANK_PRODUCT_ID[<?=$BankProduct['id'];?>]" type="checkbox" value="<?=$BankProduct['name'];?>" <?=(in_array($BankProduct['id'], array_keys($current_settings['OPTION_BANK_PRODUCT_ID'])) ) ? 'checked' : '';?>>
                         </td>
                         <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
                             <?=$BankProduct['name'];?> (
@@ -187,6 +197,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
                             <?=Loc::getMessage('PB_NO_SALE_POINT_ID');?>
                         </td>
                     </tr>
+                    <?php }?>
                     <?php }?>
                     <?php }?>
 
