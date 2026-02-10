@@ -2,6 +2,7 @@
 IncludeModuleLangFile(__FILE__);
 use Bitrix\Main\Config\Option;
 use Bitrix\Sale\Payment;
+use Bitrix\Main\Localization\Loc;
 
 $post['prodUrl'] = $params['prodUrl'];
 $post['token'] = $params['token'];
@@ -70,8 +71,7 @@ curl_close($process);
 $arr1 = json_decode($result1, true);
    }
 ?>
-<style type="text/css">
-</style>
+
 <div class="paritet" style="text-align: left">
 <?php if ($params['arr']['result']['urlToCreateClaim']) {?>
 <a href="<?=$params['arr']['result']['urlToCreateClaim'];?>" target="_blank">
@@ -81,9 +81,16 @@ $arr1 = json_decode($result1, true);
 <?php if ($params['arr']['responseException']['exceptionMessage']) {
     echo '<input name="" class="btn btn-default"  type="button" value="' . Loc::getMessage('PB_ERROR_MESSAGE_UNDEFIND') . '">';
 }?>
-      <!-- <pre style="white-space: pre-wrap;">
-            <?php // print_r($params);;?>
+<p><ol>
+    <li><?= Loc::getMessage('PB_STEP1') ?></li>
+    <li><?= Loc::getMessage('PB_STEP2') ?></li>
+    <li><?= Loc::getMessage('PB_STEP3') ?></li>
+    <li><?= Loc::getMessage('PB_STEP4') ?></li>
+    <li><?= Loc::getMessage('PB_STEP5') ?></li>
+</ol></p>
+    <!--  <pre style="white-space: pre-wrap;">
+            <?php  print_r($params);;?>
             <hr>
-            <?php // print_r($r);;?>
+            <?php  print_r($r);;?>
         </pre>-->
 </div>
