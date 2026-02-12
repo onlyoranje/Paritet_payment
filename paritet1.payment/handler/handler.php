@@ -13,7 +13,7 @@ use Bitrix\Sale\BasketItem;
 use Bitrix\Sale\PaySystem\IRefund;
 use Bitrix\Main\Diag\Debug;
 use Bitrix\Sale\Order;
-//use Sale\Handlers\PaySystem\COption;
+
 
 
 class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefund {
@@ -39,7 +39,7 @@ class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefun
         $Order = Order::load($payment->getOrderId());
         $propertyCollection = $Order->getPropertyCollection();
 
-        $phoneProp = $propertyCollection->getPhone(); // Специальный метод для системных свойств
+        $phoneProp = $propertyCollection->getPhone(); 
         if (!$phoneProp) {
             foreach ($propertyCollection as $prop) {
                 if ($prop->getField('CODE') === 'PHONE') {
@@ -52,13 +52,13 @@ class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefun
 
         $paymentCollection = $Order->getPaymentCollection();
         foreach ($paymentCollection as $payment) {
-            $psName = $payment->getPaymentSystemName(); // название платежной системы
-            $sum = $payment->getSum(); // сумма к оплате
-            $isPaid = $payment->isPaid(); // true, если оплачена
-            $isReturned = $payment->isReturn(); // true, если возвращена
-            $ps = $payment->getPaySystem(); // платежная система (объект Sale\PaySystem\Service)
-            $psID = $payment->getPaymentSystemId(); // ID платежной системы
-            $isInnerPs = $payment->isInner(); // true, если это оплата с внутреннего счета
+            $psName = $payment->getPaymentSystemName(); 
+            $sum = $payment->getSum(); 
+            $isPaid = $payment->isPaid(); 
+            $isReturned = $payment->isReturn(); 
+            $ps = $payment->getPaySystem(); 
+            $psID = $payment->getPaymentSystemId(); 
+            $isInnerPs = $payment->isInner(); 
 
             if ($isPaid) {
                 $is_paid_sum += $sum;
@@ -91,8 +91,7 @@ class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefun
         $params['skipClaimVerification'] = true;
 
 
-        /*$r = $params;
-        $r = json_encode($r, JSON_UNESCAPED_UNICODE);*/
+       
 
         $this->setExtraParams($params);
         return $this->showTemplate($payment, "payment");
@@ -100,7 +99,7 @@ class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefun
     }
     public function getToken() {
 
-         $post = array('username' => \COption::GetOptionString($this->MODULE_ID, 'OPTION_LOGIN'), 'password' => \COption::GetOptionString($this->MODULE_ID, 'OPTION_PASSWORD'));
+        $post = array('username' => \COption::GetOptionString($this->MODULE_ID, 'OPTION_LOGIN'), 'password' => \COption::GetOptionString($this->MODULE_ID, 'OPTION_PASSWORD'));
         $ch = curl_init(\COption::GetOptionString($this->MODULE_ID, 'OPTION_PROD_URL').'OAuth/token');
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
@@ -116,7 +115,7 @@ class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefun
         return $token;
 
     }
-    // Список валют, поддерживаемых обработчиком
+   
     public function getCurrencyList() {
 
         return ['BYN'];
@@ -133,30 +132,88 @@ class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefun
         return $result;
     }
     public function getPaymentIdFromRequest(Request $request) {
-
-        return $request->get('orderNumber');
+    $orderId = explode("_", $request->get('orderId') );
+	$orderId = array_pop($orderId);
+    $order = Order::load($orderId);
+    if ($order) {
+    $paymentCollection = $order->getPaymentCollection();
+    
+    foreach ($paymentCollection as $payment) {
+       
+        
+        if ($request->get('PAY_SYSTEM_ID') == $payment->getPaymentSystemId())
+            {
+return $payment->getId();
+            }
+      
     }
-    public function processRequest(Payment $payment, Request $request) {
-        $result = new PaySystem\ServiceResult();
-        $action = $request->get('action');
-         echo 111;
-        if ($action === 'demandPayment') {
-            return $this->processDemandPaymentAction($payment, $request);
-        } else if ($action === 'consumerStatus') {
-            return $this->processConsumerStatusAction($payment, $request);
-        } else if ($action === 'consumerReady') {
-            return $this->processConsumerReadyAction($payment, $request);
-        } else if ($action === 'paymentStatusAwait') {
-            return $this->processPaymentStatusAwaitAction($payment, $request);
-        } else if ($action === 'paymentStatus') {
-            return $this->processPaymentStatusAction($payment, $request);
-        } else if ($action === 'consumerStatusAwait') {
-            return $this->processConsumerStatusAwaitAction($payment, $request);
-        }
+}
+        
+    }
+    public static function getIndicativeFields()
 
-        return 11;
+{
+
+
+    return array('PAY_SYSTEM');
+
+}
+static function isMyResponseExtended(Request $request, $paySystemId)
+
+{
+    if ($request->get('PAY_SYSTEM')!=='PB') return false;
+   
+    return true;
+  ;
+
+}
+
+    public function processRequest(Payment $payment, Request $request) {
+        global $APPLICATION;
+        $result = new PaySystem\ServiceResult();
+        $option_status_pay  = $this->getBusinessValue($payment, 'PB_STATUS_PAY');
+       
+        $bank_status_pay = $request->get('statusId');
+        
+        
+        if ($option_status_pay==$bank_status_pay) {
+              $orderId = explode("_", $request->get('orderId') );
+	$orderId = array_pop($orderId);
+    $order = Order::load($orderId);
+    if ($order) {
+    $paymentCollection = $order->getPaymentCollection();
+    
+    foreach ($paymentCollection as $payment) {
+       
+      
+        if ($request->get('PAY_SYSTEM_ID') == $payment->getPaymentSystemId())
+            { 
+                
+     
+$payment->setPaid("Y");
+ $order->save();
+            }
+       
+    }
+}
+        } 
+        else 
+            {
+
+        }
+        
+
+
+
         return $result;
     }
+   public function getStatusPay(){
+
+     
+   $arr_status = unserialize(\COption::GetOptionString($this->MODULE_ID,  'OPTION_STATUSES'));
+    return $arr_status;
+    }
+
     private function log($data) {
         return file_put_contents(
             __DIR__ . '/PP-' . date('d-m-Y-H') . '-log.json',
@@ -176,7 +233,7 @@ if (!empty($paySystemService)) {
         if ($initResult->isSuccess()) {
             $arPaySysAction['BUFFERED_OUTPUT'] = $initResult->getTemplate();
         }
-        // получаем форму оплаты из обработчика
+       
         else {
             $arPaySysAction["ERROR"] = $initResult->getErrorMessages();
         }

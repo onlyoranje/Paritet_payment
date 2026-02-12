@@ -20,12 +20,15 @@ $current_settings = array(
     'OPTION_SALE_POINT_ID'      => COption::GetOptionString($moduleID, 'OPTION_SALE_POINT_ID'),
     'OPTION_TOKEN'              => COption::GetOptionString($moduleID, 'OPTION_TOKEN'),
     'OPTION_BANK_PRODUCT_ID'    => COption::GetOptionString($moduleID, 'OPTION_BANK_PRODUCT_ID'),
+    'OPTION_STATUSES'           => COption::GetOptionString($moduleID, 'OPTION_STATUSES'),
 );
 
 if ($current_settings['OPTION_SALE_POINT_ID']) {
   $arr_BP = unserialize($current_settings['OPTION_BANK_PRODUCT_ID']);
 
 }
+
+$arr_status = unserialize($current_settings['OPTION_STATUSES']);
 
 $data = [
     'NAME' => 'Кредит/рассрочка от Паритетбанка',
@@ -101,6 +104,19 @@ $data = [
             "INPUT" => [
                 'TYPE' => 'Y/N'
             ],
+
+
+        ],
+        "PB_STATUS_PAY" => [
+            "NAME" => Loc::getMessage("PB_STATUS_PAY_NAME"),
+            "DESCRIPTION" => Loc::getMessage("PB_STATUS_PAY_DESC"),
+            'SORT' => 180,
+            'GROUP' => Loc::getMessage("PB_GROUP_ORDER"),
+            'TYPE' => 'SELECT',
+            'INPUT' => [
+            'TYPE' => 'ENUM',
+            'OPTIONS' => $arr_status,
+        ],
 
 
         ],

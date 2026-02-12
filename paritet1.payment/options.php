@@ -25,9 +25,10 @@ if ($REQUEST_METHOD == 'POST' && strlen($Update . $Apply) > 0 && check_bitrix_se
     COption::SetOptionString($moduleID, "OPTION_PASSWORD", $_POST['OPTION_PASSWORD']);
     COption::SetOptionString($moduleID, "OPTION_STORE_ID", $_POST['OPTION_STORE_ID']);
     COption::SetOptionString($moduleID, "OPTION_SALE_POINT_ID", $_POST['OPTION_SALE_POINT_ID']);
-    COption::SetOptionString($moduleID, "OPTION_TOKEN", $_POST['OPTION_TOKEN']);
+    //COption::SetOptionString($moduleID, "OPTION_TOKEN", $_POST['OPTION_TOKEN']);
     COption::SetOptionString($moduleID, "OPTION_PROD_URL", $_POST['OPTION_PROD_URL']);
     COption::SetOptionString($moduleID, "OPTION_BANK_PRODUCT_ID", serialize($_POST['OPTION_BANK_PRODUCT_ID']));
+    COption::SetOptionString($moduleID, "OPTION_STATUSES", serialize($_POST['OPTION_STATUSES']));
 }
 $current_settings = array(
     'BANK_NAME' => $PB_CONFIG['BANK_NAME'],
@@ -37,7 +38,7 @@ $current_settings = array(
     'OPTION_PASSWORD' => COption::GetOptionString($moduleID, 'OPTION_PASSWORD'),
     'OPTION_STORE_ID' => COption::GetOptionString($moduleID, 'OPTION_STORE_ID'),
     'OPTION_SALE_POINT_ID' => COption::GetOptionString($moduleID, 'OPTION_SALE_POINT_ID'),
-    'OPTION_TOKEN' => COption::GetOptionString($moduleID, 'OPTION_TOKEN'),
+    //'OPTION_TOKEN' => COption::GetOptionString($moduleID, 'OPTION_TOKEN'),
     'OPTION_PROD_URL' => COption::GetOptionString($moduleID, 'OPTION_PROD_URL'),
     'OPTION_BANK_PRODUCT_ID' => unserialize(COption::GetOptionString($moduleID, 'OPTION_BANK_PRODUCT_ID')),
 );
@@ -45,6 +46,7 @@ if (!$current_settings['OPTION_PROD_URL']) $current_settings['OPTION_PROD_URL']=
 if (!$current_settings['OPTION_BANK_PRODUCT_ID']) $current_settings['OPTION_BANK_PRODUCT_ID']=[];
 $tabControl = new CAdminTabControl("tabControl", array(
     array("DIV" => "edit1", "TAB" => Loc::getMessage('PB_TAB_NAME'), "ICON" => "blog_settings", "TITLE" => Loc::getMessage('PB_TAB_TITLE')),
+    array("DIV" => "edit2", "TAB" => Loc::getMessage('PB_STATUS_TAB_NAME'), "ICON" => "blog_settings", "TITLE" => Loc::getMessage('PB_STATUS_TAB_TITLE')),
 ));
 $tabControl->Begin();?>
     <form method="POST" action="<?php echo $APPLICATION->GetCurPage(); ?>?mid=<?=htmlspecialcharsbx($mid);?>&lang=<?=LANGUAGE_ID;?>">
@@ -203,6 +205,35 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
 
                   
                     <?php $tabControl->BeginNextTab();?>
+
+<?php
+
+$process = curl_init($PB_CONFIG['PROD_URL'] . 'ReferenceData/GetClaimStatusesRef');
+        curl_setopt($process, CURLOPT_HTTPHEADER, array(
+        'Accept: application/json; charset=utf-8',
+        'Authorization: Bearer ' . $token  . ''
+    ));
+    curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
+    
+$result = curl_exec($process);
+    curl_close($process);
+$result = json_decode($result,true);
+    foreach ($result['result'] as $status){
+        ?>
+        <tr>
+                        <td width="50%" class="adm-detail-content-cell-l">
+                           <?= $status['id']?> 
+                        </td>
+                        <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
+                            <?= $status['name']?>
+                        </td>
+                    </tr>
+                    <input type="hidden" name="OPTION_STATUSES[<?=$status['id']?>]" value="<?=$status['name'];?>">
+        <?
+        //$arr[$status['id']]=$status['name'];
+    }
+?>
+
                     <?php $tabControl->Buttons();?>
                     <input type="submit" name="Update" value="<?=GetMessage("MAIN_SAVE");?>" title="<?=GetMessage("MAIN_OPT_SAVE_TITLE");?>" class="adm-btn-save">
                     <input type="submit" name="Apply" value="<?=GetMessage("MAIN_OPT_APPLY");?>" title="<?=GetMessage("MAIN_OPT_APPLY_TITLE");?>">
