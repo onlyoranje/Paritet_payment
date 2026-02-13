@@ -4,9 +4,10 @@ use Bitrix\Main\Config\Option;
 use Bitrix\Sale\Payment;
 use Bitrix\Main\Localization\Loc;
 
+
 $post['prodUrl'] = $params['prodUrl'];
 $post['token'] = $params['token'];
-$post['orderId'] = $params['PB_PREFIX'] . '2_' . $params['orderId'];
+$post['orderId'] = $params['PB_PREFIX'] . '_' . $params['orderId'];
 $post['salePlaceId'] = $params['salePlaceId'];
 $post['salePointId'] = $params['salePointId'];
 $post['bankProductId'] = $params['BANK_PRODUCT'];
@@ -15,8 +16,8 @@ $post['ownSum'] = $params['ownSum'];
 $post['phoneNumber'] = strval($params['phoneNumber']);
 $post['skipClaimVerification'] = $params['skipClaimVerification'];
 $post['createClaimsByRelatedBankProducts'] = true;
-$post['clientRedirectUrl'] = str_replace('#ORDER_ID', $params['orderId'], $params['PB_CLIENT_REDIRECT']);
-$post['claimStatusChangedCallbackUrl'] = $params['PB_STATUS_REDIRECT'];
+$post['clientRedirectUrl'] = $params['url'].str_replace('#ORDER_ID#', $params['orderId'], $params['PB_CLIENT_REDIRECT']);
+$post['claimStatusChangedCallbackUrl'] = $params['url'].str_replace('#PAY_SYSTEM_ID#', $params['PAYMENT_ID'], $params['PB_STATUS_REDIRECT']);
 $post['products'] = $params['products'];
 
 foreach ($post['products'] as $key => $products) {
@@ -49,7 +50,7 @@ $result0 = curl_exec($process);
 curl_close($process);
 $arr = json_decode($result0, true);
 $params['arr'] = $arr;
-//print_r($params);
+
 if ($params['PB_SMS'] == 'Y') {
 $r1['sum'] = $params['sum'];
 $r1['phoneNumber'] = $post['phoneNumber'];
@@ -88,9 +89,9 @@ $arr1 = json_decode($result1, true);
     <li><?= Loc::getMessage('PB_STEP4') ?></li>
     <li><?= Loc::getMessage('PB_STEP5') ?></li>
 </ol></p>
-    <!--  <pre style="white-space: pre-wrap;">
-            <?php  print_r($params);;?>
+  <!--    <pre style="white-space: pre-wrap;">
+            <?php  print_r($post);;?>
             <hr>
-            <?php  print_r($r);;?>
+            <?php  print_r($_SERVER['HTTP_ORIGIN']);;?>
         </pre>-->
 </div>

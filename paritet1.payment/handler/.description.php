@@ -89,12 +89,29 @@ $data = [
             "DESCRIPTION" => Loc::getMessage("PB_CLIENT_REDIRECT_DESC"),
             'SORT' => 150,
             'GROUP' => Loc::getMessage("PB_GROUP_ORDER"),
+            "INPUT" => [
+                "TYPE" => "STRING",
+
+            ],
+            'DEFAULT' => [
+                "PROVIDER_VALUE" => "/personal/orders/#ORDER_ID#",
+            	"PROVIDER_KEY" => "INPUT"
+            ],
         ],
         "PB_STATUS_REDIRECT" => [
             "NAME" => Loc::getMessage("PB_STATUS_REDIRECT_NAME"),
             "DESCRIPTION" => Loc::getMessage("PB_STATUS_REDIRECT_DESC"),
             'SORT' => 160,
+            "INPUT" => [
+                "TYPE" => "STRING",
+
+            ],
+            'DEFAULT' => [
+                "PROVIDER_VALUE" => "/bitrix/tools/sale_ps_result.php?PAY_SYSTEM=PB&PAY_SYSTEM_ID=#PAY_SYSTEM_ID#",
+            	"PROVIDER_KEY" => "INPUT"
+            ],
             'GROUP' => Loc::getMessage("PB_GROUP_ORDER"),
+
         ],
         "PB_ALTERNATIVE_CLAIM" => [
             "NAME" => Loc::getMessage("PB_ALTERNATIVE_CLAIM_NAME"),

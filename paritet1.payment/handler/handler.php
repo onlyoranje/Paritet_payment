@@ -1,246 +1,97 @@
 <?php
-
-namespace Sale\Handlers\PaySystem;
-
+IncludeModuleLangFile(__FILE__);
 use Bitrix\Main\Config\Option;
-use Bitrix\Main\Error;
-use Bitrix\Main\Loader;
-use Bitrix\Main\Request;
-use Bitrix\Main\Type\DateTime;
-use Bitrix\Sale\PaySystem;
 use Bitrix\Sale\Payment;
-use Bitrix\Sale\BasketItem;
-use Bitrix\Sale\PaySystem\IRefund;
-use Bitrix\Main\Diag\Debug;
-use Bitrix\Sale\Order;
+use Bitrix\Main\Localization\Loc;
 
 
+$post['prodUrl'] = $params['prodUrl'];
+$post['token'] = $params['token'];
+$post['orderId'] = $params['PB_PREFIX'] . '_' . $params['orderId'];
+$post['salePlaceId'] = $params['salePlaceId'];
+$post['salePointId'] = $params['salePointId'];
+$post['bankProductId'] = $params['BANK_PRODUCT'];
+$post['sum'] = $params['sum'];
+$post['ownSum'] = $params['ownSum'];
+$post['phoneNumber'] = strval($params['phoneNumber']);
+$post['skipClaimVerification'] = $params['skipClaimVerification'];
+$post['createClaimsByRelatedBankProducts'] = true;
+$post['clientRedirectUrl'] = $params['url'].str_replace('#ORDER_ID#', $params['orderId'], $params['PB_CLIENT_REDIRECT']);
+$post['claimStatusChangedCallbackUrl'] = $params['url'].str_replace('#PAY_SYSTEM_ID#', $params['PAYMENT_ID'], $params['PB_STATUS_REDIRECT']);
+$post['products'] = $params['products'];
 
-class paritet1_paymentHandler extends PaySystem\ServiceHandler implements IRefund {
-     var $MODULE_ID = 'paritet1.payment';
-
-
-    public function initiatePay(Payment $payment, Request $request = null) {
-        $params = array();
-
-        Loader::includeModule($this->MODULE_ID);
-
-
-        $is_paid_sum = 0;
-
-
-        $params['token'] = $this->getToken();
-        $params['salePlaceId'] = \COption::GetOptionString($this->MODULE_ID, 'OPTION_STORE_ID');
-        $params['salePointId'] = \COption::GetOptionString($this->MODULE_ID, 'OPTION_SALE_POINT_ID');
-        $params['prodUrl'] = \COption::GetOptionString($this->MODULE_ID, 'OPTION_PROD_URL');
-;
-
-
-        $Order = Order::load($payment->getOrderId());
-        $propertyCollection = $Order->getPropertyCollection();
-
-        $phoneProp = $propertyCollection->getPhone(); 
-        if (!$phoneProp) {
-            foreach ($propertyCollection as $prop) {
-                if ($prop->getField('CODE') === 'PHONE') {
-                    $phoneProp = $prop;
-                    break;
-                }
-            }
-
-        }
-
-        $paymentCollection = $Order->getPaymentCollection();
-        foreach ($paymentCollection as $payment) {
-            $psName = $payment->getPaymentSystemName(); 
-            $sum = $payment->getSum(); 
-            $isPaid = $payment->isPaid(); 
-            $isReturned = $payment->isReturn(); 
-            $ps = $payment->getPaySystem(); 
-            $psID = $payment->getPaymentSystemId(); 
-            $isInnerPs = $payment->isInner(); 
-
-            if ($isPaid) {
-                $is_paid_sum += $sum;
-            }
-            $total_sum += $sum;
-            $arr['k_oplate'] = $KOPLATE;
-        }
-
-
-        $params['orderId'] = $payment->getOrderId();
-
-        $Basket = $Order->getBasket();
-        $basketItems = $Basket->getBasketItems();
-
-        $positions = [];
-        $lastIndex = 0;
-        foreach ($basketItems as $key => $basketItem) {
-            $params['products'][$key]['productId'] = $key;
-            $params['products'][$key]['productId'] = "'" . $basketItem->getProductId() . "'";
-            $params['products'][$key]['vendorCode'] = 'PRODUCT_' . $basketItem->getProductId();
-            $params['products'][$key]['name'] = $basketItem->getField('NAME');
-            $params['products'][$key]['price'] = $basketItem->getPrice();
-            $params['products'][$key]['quantity'] = $basketItem->getQuantity();
-
-        }
-
-        $params['sum'] = $total_sum;
-        $params['ownSum'] = $is_paid_sum;
-        $params['phoneNumber'] = '+' . preg_replace('/\D+/', '', $phoneProp->getValue());
-        $params['skipClaimVerification'] = true;
-
-
-       
-
-        $this->setExtraParams($params);
-        return $this->showTemplate($payment, "payment");
-
-    }
-    public function getToken() {
-
-        $post = array('username' => \COption::GetOptionString($this->MODULE_ID, 'OPTION_LOGIN'), 'password' => \COption::GetOptionString($this->MODULE_ID, 'OPTION_PASSWORD'));
-        $ch = curl_init(\COption::GetOptionString($this->MODULE_ID, 'OPTION_PROD_URL').'OAuth/token');
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        $response = curl_exec($ch);
-        curl_close($ch);
-
-        $response = json_decode($response, true);
-        $token = $response['access_token'] ;
-
-
-        return $token;
-
-    }
-   
-    public function getCurrencyList() {
-
-        return ['BYN'];
-    }
-    public function refund(Payment $payment, $refundableSum) {
-        $result = new PaySystem\ServiceResult();
-
-        $response = $this->sendRefundRequest($payment, $refundableSum);
-
-        if ($response['status'] === 1) {
-            $result->setOperationType(PaySystem\ServiceResult::MONEY_LEAVING);
-        }
-
-        return $result;
-    }
-    public function getPaymentIdFromRequest(Request $request) {
-    $orderId = explode("_", $request->get('orderId') );
-	$orderId = array_pop($orderId);
-    $order = Order::load($orderId);
-    if ($order) {
-    $paymentCollection = $order->getPaymentCollection();
-    
-    foreach ($paymentCollection as $payment) {
-       
-        
-        if ($request->get('PAY_SYSTEM_ID') == $payment->getPaymentSystemId())
-            {
-return $payment->getId();
-            }
-      
-    }
-}
-        
-    }
-    public static function getIndicativeFields()
-
-{
-
-
-    return array('PAY_SYSTEM');
-
-}
-static function isMyResponseExtended(Request $request, $paySystemId)
-
-{
-    if ($request->get('PAY_SYSTEM')!=='PB') return false;
-   
-    return true;
-  ;
-
-}
-
-    public function processRequest(Payment $payment, Request $request) {
-        global $APPLICATION;
-        $result = new PaySystem\ServiceResult();
-        $option_status_pay  = $this->getBusinessValue($payment, 'PB_STATUS_PAY');
-       
-        $bank_status_pay = $request->get('statusId');
-        
-        
-        if ($option_status_pay==$bank_status_pay) {
-              $orderId = explode("_", $request->get('orderId') );
-	$orderId = array_pop($orderId);
-    $order = Order::load($orderId);
-    if ($order) {
-    $paymentCollection = $order->getPaymentCollection();
-    
-    foreach ($paymentCollection as $payment) {
-       
-      
-        if ($request->get('PAY_SYSTEM_ID') == $payment->getPaymentSystemId())
-            { 
-                
-     
-$payment->setPaid("Y");
- $order->save();
-            }
-       
-    }
-}
-        } 
-        else 
-            {
-
-        }
-        
-
-
-
-        return $result;
-    }
-   public function getStatusPay(){
-
-     
-   $arr_status = unserialize(\COption::GetOptionString($this->MODULE_ID,  'OPTION_STATUSES'));
-    return $arr_status;
-    }
-
-    private function log($data) {
-        return file_put_contents(
-            __DIR__ . '/PP-' . date('d-m-Y-H') . '-log.json',
-            json_encode($data, JSON_PRETTY_PRINT, JSON_UNESCAPED_UNICODE),
-            FILE_APPEND
-        );
+foreach ($post['products'] as $key => $products) {
+    if ($params['PB_BELARUS_PRODUCT'] == 'Y') {
+        $post['products'][$key]['MadeInBelarus'] = true;
     }
 }
 
+if ($params['PB_ALTERNATIVE_CLAIM'] == 'Y') {
+    $post['showAlternativeClaimsToClients'] = true;
+}
+
+if ($params['PB_ALTERNATIVE_CLAIM'] == 'N') {
+    $post['showAlternativeClaimsToClients'] = false;
+}
+
+$r = $post;
+$r = json_encode($r, JSON_UNESCAPED_UNICODE);
+
+$process = curl_init($post['prodUrl'] . 'SalePoints/' . $post['salePointId'] . '/Orders/CreateOrder');
+curl_setopt($process, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/json',
+    'Accept: text/plain',
+    'Authorization: Bearer ' . $post['token'] . ''
+));
+curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($process, CURLOPT_POSTFIELDS, $r);
+$result0 = curl_exec($process);
+curl_close($process);
+$arr = json_decode($result0, true);
+$params['arr'] = $arr;
+
+if ($params['PB_SMS'] == 'Y') {
+$r1['sum'] = $params['sum'];
+$r1['phoneNumber'] = $post['phoneNumber'];
+
+$r1['qrId'] = $arr['result']['qrId'];
+
+$r1 = json_encode($r1, JSON_UNESCAPED_UNICODE);
+$process = curl_init($post['prodUrl'] . 'SalePoints/' . $post['salePointId'] . '/Notification/SendQrUrlToClient');
+curl_setopt($process, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/json',
+    'Accept: text/plain',
+    'Authorization: Bearer ' . $post['token'] . ''
+));
+curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($process, CURLOPT_POSTFIELDS, $r1);
+$result1 = curl_exec($process);
+curl_close($process);
+$arr1 = json_decode($result1, true);
+   }
 ?>
-<?php
 
-if (!empty($paySystemService)) {
-    $arPaySysAction = $paySystemService->getFieldsValues();
-    if ($paySystemService->getField('NEW_WINDOW') === 'N' || $paySystemService->getField('ID') == PaySystem\Manager::getInnerPaySystemId()) {
-        $initResult = $paySystemService->initiatePay($payment, null, PaySystem\BaseServiceHandler::STRING);
-        if ($initResult->isSuccess()) {
-            $arPaySysAction['BUFFERED_OUTPUT'] = $initResult->getTemplate();
-        }
-       
-        else {
-            $arPaySysAction["ERROR"] = $initResult->getErrorMessages();
-        }
-
-    }
-}
-
-
-
-?>
+<div class="paritet" style="text-align: left">
+<?php if ($params['arr']['result']['urlToCreateClaim']) {?>
+<a href="<?=$params['arr']['result']['urlToCreateClaim'];?>" target="_blank">
+    <input name="" class='btn btn-default' type="button" value="<?=Loc::getMessage('PB_ORDER_BUTTON_NAME');?>">
+    </a>
+<?php }?>
+<?php if ($params['arr']['responseException']['exceptionMessage']) {
+    echo '<input name="" class="btn btn-default"  type="button" value="' . Loc::getMessage('PB_ERROR_MESSAGE_UNDEFIND') . '">';
+}?>
+<p><ol>
+    <li><?= Loc::getMessage('PB_STEP1') ?></li>
+    <li><?= Loc::getMessage('PB_STEP2') ?></li>
+    <li><?= Loc::getMessage('PB_STEP3') ?></li>
+    <li><?= Loc::getMessage('PB_STEP4') ?></li>
+    <li><?= Loc::getMessage('PB_STEP5') ?></li>
+</ol></p>
+  <!--    <pre style="white-space: pre-wrap;">
+            <?php  print_r($post);;?>
+            <hr>
+            <?php  print_r($_SERVER['HTTP_ORIGIN']);;?>
+        </pre>-->
+</div>
