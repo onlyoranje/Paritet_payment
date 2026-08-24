@@ -1,4 +1,4 @@
-<?
+<?php
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Config\Option;
 use Bitrix\Sale\PaySystem;
@@ -23,12 +23,18 @@ $current_settings = array(
     'OPTION_STATUSES'           => COption::GetOptionString($moduleID, 'OPTION_STATUSES'),
 );
 
+$arr_BP = array();
 if ($current_settings['OPTION_SALE_POINT_ID']) {
-  $arr_BP = unserialize($current_settings['OPTION_BANK_PRODUCT_ID']);
-
+  $arr_BP = @unserialize($current_settings['OPTION_BANK_PRODUCT_ID']);
+  if (!is_array($arr_BP)) {
+    $arr_BP = array();
+  }
 }
 
-$arr_status = unserialize($current_settings['OPTION_STATUSES']);
+$arr_status = @unserialize($current_settings['OPTION_STATUSES']);
+if (!is_array($arr_status)) {
+    $arr_status = array();
+}
 
 $data = [
     'NAME' => 'Кредит/рассрочка от Паритетбанка',

@@ -29,6 +29,8 @@ if ($REQUEST_METHOD == 'POST' && strlen($Update . $Apply) > 0 && check_bitrix_se
     COption::SetOptionString($moduleID, "OPTION_PROD_URL", $_POST['OPTION_PROD_URL']);
     COption::SetOptionString($moduleID, "OPTION_BANK_PRODUCT_ID", serialize($_POST['OPTION_BANK_PRODUCT_ID']));
     COption::SetOptionString($moduleID, "OPTION_STATUSES", serialize($_POST['OPTION_STATUSES']));
+    COption::SetOptionString($moduleID, "OPTION_PAID_STATUS_ID", $_POST['OPTION_PAID_STATUS_ID']);
+    COption::SetOptionString($moduleID, "OPTION_ORDER_PREFIX", $_POST['OPTION_ORDER_PREFIX']);
 }
 $current_settings = array(
     'BANK_NAME' => $PB_CONFIG['BANK_NAME'],
@@ -40,10 +42,12 @@ $current_settings = array(
     'OPTION_SALE_POINT_ID' => COption::GetOptionString($moduleID, 'OPTION_SALE_POINT_ID'),
     //'OPTION_TOKEN' => COption::GetOptionString($moduleID, 'OPTION_TOKEN'),
     'OPTION_PROD_URL' => COption::GetOptionString($moduleID, 'OPTION_PROD_URL'),
-    'OPTION_BANK_PRODUCT_ID' => unserialize(COption::GetOptionString($moduleID, 'OPTION_BANK_PRODUCT_ID')),
+    'OPTION_BANK_PRODUCT_ID' => @unserialize(COption::GetOptionString($moduleID, 'OPTION_BANK_PRODUCT_ID')),
+    'OPTION_ORDER_PREFIX' => COption::GetOptionString($moduleID, 'OPTION_ORDER_PREFIX'),
+    'OPTION_PAID_STATUS_ID' => COption::GetOptionString($moduleID, 'OPTION_PAID_STATUS_ID'),
 );
 if (!$current_settings['OPTION_PROD_URL']) $current_settings['OPTION_PROD_URL']='https://partner-loans.paritetbank.by/vendor-api/';
-if (!$current_settings['OPTION_BANK_PRODUCT_ID']) $current_settings['OPTION_BANK_PRODUCT_ID']=[];
+if (!is_array($current_settings['OPTION_BANK_PRODUCT_ID'])) $current_settings['OPTION_BANK_PRODUCT_ID']=[];
 $tabControl = new CAdminTabControl("tabControl", array(
     array("DIV" => "edit1", "TAB" => Loc::getMessage('PB_TAB_NAME'), "ICON" => "blog_settings", "TITLE" => Loc::getMessage('PB_TAB_TITLE')),
     array("DIV" => "edit2", "TAB" => Loc::getMessage('PB_STATUS_TAB_NAME'), "ICON" => "blog_settings", "TITLE" => Loc::getMessage('PB_STATUS_TAB_TITLE')),
@@ -55,16 +59,18 @@ $tabControl->Begin();?>
             <?php
 
 if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) {
-    $post = array('username' => $current_settings['OPTION_LOGIN'], 'password' => $current_settings['OPTION_PASSWORD']);
+    $tokenRequest = array('username' => $current_settings['OPTION_LOGIN'], 'password' => $current_settings['OPTION_PASSWORD']);
     $ch = curl_init($PB_CONFIG['PROD_URL'] . 'OAuth/token');
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $tokenRequest);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
     $response = curl_exec($ch);
     curl_close($ch);
-    $response = json_decode($response, true);
-    $token = $response['access_token'];
+    $response = is_string($response) ? json_decode($response, true) : array();
+    $token = (is_array($response) && !empty($response['access_token'])) ? $response['access_token'] : null;
+} else {
+    $token = null;
 }
 ?>
                 <tr class="heading">
@@ -91,7 +97,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
                         <?=Loc::getMessage('PB_PROD_URL');?>
                     </td>
                     <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                        <input type="text" name="OPTION_PROD_URL" value="<?=$current_settings['OPTION_PROD_URL'];?>">
+                        <input type="text" name="OPTION_PROD_URL" value="<?=htmlspecialcharsbx($current_settings['OPTION_PROD_URL']);?>">
                     </td>
                 </tr>
                 <tr class="extra-settings active">
@@ -99,7 +105,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
                         <?=Loc::getMessage('PB_LOGIN');?>
                     </td>
                     <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                        <input type="text" name="OPTION_LOGIN" value="<?=$current_settings['OPTION_LOGIN'];?>">
+                        <input type="text" name="OPTION_LOGIN" value="<?=htmlspecialchars($current_settings['OPTION_LOGIN']);?>">
                     </td>
                 </tr>
                 <tr class="extra-settings active">
@@ -107,7 +113,7 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
                         <?=Loc::getMessage('PB_PASSWORD');?>
                     </td>
                     <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                        <input type="text" name="OPTION_PASSWORD" value="<?=$current_settings['OPTION_PASSWORD'];?>">
+                        <input type="password" name="OPTION_PASSWORD" value="<?=htmlspecialcharsbx($current_settings['OPTION_PASSWORD']);?>" autocomplete="new-password">
                     </td>
                 </tr>
                 <?php if ($token) {?>
@@ -122,14 +128,14 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
     curl_close($process);
     $arr = json_decode($result, true);
 
-    $current_settings['OPTION_STORE_ID'] = $arr['result']['salePlaceId'];
+    $current_settings['OPTION_STORE_ID'] = (is_array($arr) && isset($arr['result']['salePlaceId'])) ? $arr['result']['salePlaceId'] : '';
 }?>
                 <tr class="extra-settings active">
                     <td width="50%" class="adm-detail-content-cell-l">
                         <?=Loc::getMessage('PB_STORE_ID');?>
                     </td>
                     <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                        <input type="text" name="OPTION_STORE_ID" value="<?=$current_settings['OPTION_STORE_ID'];?>">
+                        <input type="text" name="OPTION_STORE_ID" value="<?=htmlspecialchars($current_settings['OPTION_STORE_ID']);?>">
                     </td>
                 </tr>
                 <?php
@@ -143,15 +149,15 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
     $result = curl_exec($process);
     curl_close($process);
     $arr = json_decode($result, true);
-    if (is_array($arr)){
+    if (is_array($arr) && isset($arr['result']) && is_array($arr['result'])){
     foreach ($arr['result'] as $point) {
         ?>
                     <tr>
                         <td width="50%" class="adm-detail-content-cell-l">
-                            <input id="к" name="OPTION_SALE_POINT_ID" type="radio" value="<?=$point['salePointId'];?>" <?=($point['salePointId'] == $current_settings['OPTION_SALE_POINT_ID']) ? 'checked' : '';?>>
+                            <input name="OPTION_SALE_POINT_ID" type="radio" value="<?=htmlspecialcharsbx($point['salePointId']);?>" <?=($point['salePointId'] == $current_settings['OPTION_SALE_POINT_ID']) ? 'checked' : '';?>>
                         </td>
                         <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                            <?=$point['salePointName'];?>
+                            <?=htmlspecialcharsbx($point['salePointName']);?>
                         </td>
                     </tr>
                     <?php }?>
@@ -170,10 +176,14 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
         curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
         $result = curl_exec($process);
         curl_close($process);
-        $arr = json_decode($result, true);
+        $arr = is_string($result) ? json_decode($result, true) : array();
 
-        foreach ($arr['result'] as $Bank_Product) {
-           $BankProducts[$Bank_Product['id']] = $Bank_Product;
+        if (is_array($arr) && isset($arr['result']) && is_array($arr['result'])) {
+            foreach ($arr['result'] as $Bank_Product) {
+                if (is_array($Bank_Product) && isset($Bank_Product['id'])) {
+                    $BankProducts[$Bank_Product['id']] = $Bank_Product;
+                }
+            }
         }
 
         asort($BankProducts);
@@ -183,12 +193,12 @@ if ($current_settings['OPTION_LOGIN'] and $current_settings['OPTION_PASSWORD']) 
             ?>
                     <tr>
                         <td width="50%" class="adm-detail-content-cell-l">
-                            <input id="BankProduct_<?=$key;?>" name="OPTION_BANK_PRODUCT_ID[<?=$BankProduct['id'];?>]" type="checkbox" value="<?=$BankProduct['name'];?>" <?=(in_array($BankProduct['id'], array_keys($current_settings['OPTION_BANK_PRODUCT_ID'])) ) ? 'checked' : '';?>>
+                            <input id="BankProduct_<?=$key;?>" name="OPTION_BANK_PRODUCT_ID[<?=htmlspecialcharsbx($BankProduct['id']);?>]" type="checkbox" value="<?=htmlspecialcharsbx($BankProduct['name']);?>" <?=(in_array($BankProduct['id'], array_keys($current_settings['OPTION_BANK_PRODUCT_ID'])) ) ? 'checked' : '';?>>
                         </td>
                         <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                            <?=$BankProduct['name'];?> (
-                                <?=$BankProduct['interestRate'];?>% /
-                                    <?=$BankProduct['termInMonth'];?> мес
+                            <?=htmlspecialcharsbx($BankProduct['name']);?> (
+                                <?=htmlspecialcharsbx($BankProduct['interestRate']);?>% /
+                                    <?=htmlspecialcharsbx($BankProduct['termInMonth']);?> мес
                                         <?=($BankProduct['useForBelarusProducts'] == 1) ? ' / &#127463;&#127486;' : '';?>)
                         </td>
                     </tr>
@@ -215,23 +225,57 @@ $process = curl_init($PB_CONFIG['PROD_URL'] . 'ReferenceData/GetClaimStatusesRef
     ));
     curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
     
-$result = curl_exec($process);
+if ($token) {
+    $result = curl_exec($process);
     curl_close($process);
-$result = json_decode($result,true);
-    foreach ($result['result'] as $status){
+    $result = is_string($result) ? json_decode($result,true) : array();
+    $statuses = (is_array($result) && isset($result['result']) && is_array($result['result']))
+        ? $result['result']
+        : array();
+    foreach ($statuses as $status){
         ?>
         <tr>
                         <td width="50%" class="adm-detail-content-cell-l">
-                           <?= $status['id']?> 
+                           <?=htmlspecialcharsbx($status['id'] ?? '')?> 
                         </td>
                         <td width="50%" class="sberbank-input-top adm-detail-content-cell-r">
-                            <?= $status['name']?>
+                            <?=htmlspecialcharsbx($status['name'] ?? '')?>
                         </td>
                     </tr>
-                    <input type="hidden" name="OPTION_STATUSES[<?=$status['id']?>]" value="<?=$status['name'];?>">
-        <?
+                    <input type="hidden" name="OPTION_STATUSES[<?=htmlspecialcharsbx($status['id'] ?? '')?>]" value="<?=htmlspecialcharsbx($status['name'] ?? '');?>">
+        <?php
         //$arr[$status['id']]=$status['name'];
     }
+
+    // Выбор статуса заявки, при котором заказ сайта считается оплаченным,
+    // и префикс заказа для сопоставления с заявкой в банке — используются агентом.
+    if (is_array($statuses)) : ?>
+            <tr class="heading">
+                <td colspan="2"><?= Loc::getMessage('PB_STATUS_AGENT_HEAD'); ?></td>
+            </tr>
+            <tr>
+                <td width="50%" class="adm-detail-content-cell-l"><?= Loc::getMessage('PB_PAID_STATUS'); ?></td>
+                <td width="50%" class="adm-detail-content-cell-r">
+                    <select name="OPTION_PAID_STATUS_ID">
+                        <option value=""> --- </option>
+                        <?php foreach ($statuses as $st): ?>
+                            <option value="<?= htmlspecialchars((string)($st['id'] ?? '')); ?>"
+                                <?= ((string)($st['id'] ?? '') === (string)$current_settings['OPTION_PAID_STATUS_ID']) ? 'selected' : ''; ?>>
+                                <?= htmlspecialchars((string)($st['name'] ?? '')); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td width="50%"><?= Loc::getMessage('PB_ORDER_PREFIX'); ?></td>
+                <td width="50%">
+                    <input type="text" name="OPTION_ORDER_PREFIX" value="<?= htmlspecialchars((string)$current_settings['OPTION_ORDER_PREFIX']); ?>">
+                </td>
+            </tr>
+        <?php
+    endif;
+}
 ?>
 
                     <?php $tabControl->Buttons();?>

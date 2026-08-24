@@ -28,7 +28,7 @@ $MESS["PB_ALTERNATIVE_CLAIM_NAME"] = 'Отображать ли альтерна
 $MESS["PB_ALTERNATIVE_CLAIM_DESC"] = '';
 
 $MESS["PB_SMS_NAME"] = 'Отправка СМС клиенту для оформления кредита';
-$MESS["PB_ALTERNATIVE_CLAIM_DESC"] = '';
+$MESS["PB_SMS_DESC"] = '';
 
 $MESS["PB_STATUS_PAY_NAME"] = 'Статус оплаты заказа';
 $MESS["PB_STATUS_PAY_DESC"] = 'Укажите статус заявки на стороне банка, при которой заказ на сайте будет в статус ОПЛАЧЕН';

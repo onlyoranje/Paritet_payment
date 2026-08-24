@@ -22,7 +22,7 @@ Class paritet1_payment extends CModule {
     	include($path."/config.php");
 
         $this->MODULE_PATH = $path;
-        $this->MODULE_NAME =  $this->GetEncodeMessage('PB_MODULE_NAME') . " " . $P_CONFIG['BANK_NAME'];
+        $this->MODULE_NAME =  $this->GetEncodeMessage('PB_MODULE_NAME') . " " . $PB_CONFIG['BANK_NAME'];
         $this->MODULE_DESCRIPTION = $this->GetEncodeMessage('PB_MODULE_DESCRIPTION');
         $this->PARTNER_NAME = $this->GetEncodeMessage('PB_PARTNER_NAME');
         $this->PARTNER_URI = $this->GetEncodeMessage('PB_PARTNER_URI');
@@ -85,7 +85,7 @@ Class paritet1_payment extends CModule {
     function changeFiles($files) {
 
         foreach ($files as $file) {
-            if ($file->isDot() === false) {
+            if ($file->isDot() === false && $file->isFile()) {
                 $path_to_file = $file->getPathname();
                 $file_contents = file_get_contents($path_to_file);
                 $file_contents = str_replace("{module_path}", $this->MODULE_ID, $file_contents);
@@ -114,6 +114,12 @@ Class paritet1_payment extends CModule {
         RegisterModule($this->MODULE_ID);
         COption::SetOptionInt($this->MODULE_ID, "delete", false);
 
+        // Регистрируем агент автоматической отметки заказов оплаченными
+        // по факту поступления заявки в выбранный статус банка.
+        $arAgent = \CAgent::GetList(array(), array('ACTIVE' => 'Y', 'NAME' => 'paritetCheckOrderStatuses();'))->Fetch();
+        if (!$arAgent) {
+            AddAgent('paritetCheckOrderStatuses();', 3600, 'Y');
+        }
     }
 
     function DoUninstall() {
@@ -126,7 +132,7 @@ Class paritet1_payment extends CModule {
     function log($data){
          file_put_contents(
             __DIR__ . '/PIP-' . date('d-m-Y-H') . '-log.json',
-            json_encode($data, JSON_PRETTY_PRINT, JSON_UNESCAPED_UNICODE),
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
             FILE_APPEND  );
     }
 }

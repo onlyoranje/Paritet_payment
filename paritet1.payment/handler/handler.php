@@ -1,97 +1,103 @@
 <?php
-IncludeModuleLangFile(__FILE__);
-use Bitrix\Main\Config\Option;
-use Bitrix\Sale\Payment;
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Main\Loader;
 
+IncludeModuleLangFile(__FILE__);
 
-$post['prodUrl'] = $params['prodUrl'];
-$post['token'] = $params['token'];
-$post['orderId'] = $params['PB_PREFIX'] . '_' . $params['orderId'];
-$post['salePlaceId'] = $params['salePlaceId'];
-$post['salePointId'] = $params['salePointId'];
-$post['bankProductId'] = $params['BANK_PRODUCT'];
-$post['sum'] = $params['sum'];
-$post['ownSum'] = $params['ownSum'];
-$post['phoneNumber'] = strval($params['phoneNumber']);
-$post['skipClaimVerification'] = $params['skipClaimVerification'];
-$post['createClaimsByRelatedBankProducts'] = true;
-$post['clientRedirectUrl'] = $params['url'].str_replace('#ORDER_ID#', $params['orderId'], $params['PB_CLIENT_REDIRECT']);
-$post['claimStatusChangedCallbackUrl'] = $params['url'].str_replace('#PAY_SYSTEM_ID#', $params['PAYMENT_ID'], $params['PB_STATUS_REDIRECT']);
-$post['products'] = $params['products'];
+/**
+ * Обработчик платежа Паритетбанка.
+ * Готовит тело запроса строго по контракту Vendor API v1 (CreateOrderRequest),
+ * выполняет запрос к API и сохраняет результат в $params['arr'].
+ * Весь вывод HTML вынесен в template/payment.php — здесь только логика.
+ */
 
-foreach ($post['products'] as $key => $products) {
+// Базовый URL сайта (со страницей оплаты). Битрикс может передать его с
+// завершающим слэшем — нормализуем, чтобы не получить "//" при склейке.
+$baseUrl = rtrim((string)$params['url'], '/');
+
+$post = array(
+    // MANDATORY поля по контракту CreateOrderRequest
+    'orderId'        => $params['PB_PREFIX'] . '_' . $params['orderId'],
+    'bankProductId'  => $params['BANK_PRODUCT'],
+    // создание заявок по связанным банковским продуктам
+    'createClaimsByRelatedBankProducts' => true,
+    // редирект клиента после оформления заявки
+    'clientRedirectUrl' => $baseUrl . str_replace('#ORDER_ID#', $params['orderId'], $params['PB_CLIENT_REDIRECT']),
+    // URL-callback для получения уведомлений об изменении статуса заявки
+    'claimStatusChangedCallbackUrl' => $baseUrl . str_replace('#PAY_SYSTEM_ID#', $params['PAYMENT_ID'], $params['PB_STATUS_REDIRECT']),
+);
+
+// Опциональные поля — только если указаны (в контракте поле 'sum' отсутствует,
+// сумма заказа считается по товарам и первоначальному взносу)
+if (!empty($params['ownSum'])) {
+    $post['ownSum'] = $params['ownSum'];
+}
+if (isset($params['phoneNumber']) && (string)$params['phoneNumber'] !== '') {
+    $post['phoneNumber'] = (string)$params['phoneNumber'];
+}
+if (isset($params['skipClaimVerification'])) {
+    $post['skipClaimVerification'] = (bool)$params['skipClaimVerification'];
+}
+
+// Продукты заказа — только если переданы корректным массивом
+if (isset($params['products']) && is_array($params['products'])) {
+    $post['products'] = $params['products'];
     if ($params['PB_BELARUS_PRODUCT'] == 'Y') {
-        $post['products'][$key]['MadeInBelarus'] = true;
+        foreach ($post['products'] as $key => $product) {
+            // В контракте поле называется madeInBelarus (camelCase)
+            $post['products'][$key]['madeInBelarus'] = true;
+        }
     }
 }
 
+// Альтернативные заявки
 if ($params['PB_ALTERNATIVE_CLAIM'] == 'Y') {
     $post['showAlternativeClaimsToClients'] = true;
-}
-
-if ($params['PB_ALTERNATIVE_CLAIM'] == 'N') {
+} elseif ($params['PB_ALTERNATIVE_CLAIM'] == 'N') {
     $post['showAlternativeClaimsToClients'] = false;
 }
 
-$r = $post;
-$r = json_encode($r, JSON_UNESCAPED_UNICODE);
+$postJson = json_encode($post, JSON_UNESCAPED_UNICODE);
 
-$process = curl_init($post['prodUrl'] . 'SalePoints/' . $post['salePointId'] . '/Orders/CreateOrder');
+$process = curl_init($params['prodUrl'] . 'SalePoints/' . $params['salePointId'] . '/Orders/CreateOrder');
 curl_setopt($process, CURLOPT_HTTPHEADER, array(
     'Content-Type: application/json',
     'Accept: text/plain',
-    'Authorization: Bearer ' . $post['token'] . ''
+    'Authorization: Bearer ' . $params['token']
 ));
-curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($process, CURLOPT_POSTFIELDS, $r);
+curl_setopt($process, CURLOPT_POSTFIELDS, $postJson);
 $result0 = curl_exec($process);
 curl_close($process);
-$arr = json_decode($result0, true);
-$params['arr'] = $arr;
 
-if ($params['PB_SMS'] == 'Y') {
-$r1['sum'] = $params['sum'];
-$r1['phoneNumber'] = $post['phoneNumber'];
+$arr = is_string($result0) ? json_decode($result0, true) : array();
+if (!is_array($arr)) {
+    $arr = array();
+}
+$params['order'] = $arr;
+$params['post']  = $post;
 
-$r1['qrId'] = $arr['result']['qrId'];
+// СМС клиенту — только когда банк вернул qrId (по контракту SendQrUrlToClientRequest:
+// phoneNumber + qrId)
+if ($params['PB_SMS'] == 'Y'
+    && !empty($arr['result']['qr']['qrId'])
+    && !empty($post['phoneNumber'])) {
 
-$r1 = json_encode($r1, JSON_UNESCAPED_UNICODE);
-$process = curl_init($post['prodUrl'] . 'SalePoints/' . $post['salePointId'] . '/Notification/SendQrUrlToClient');
-curl_setopt($process, CURLOPT_HTTPHEADER, array(
-    'Content-Type: application/json',
-    'Accept: text/plain',
-    'Authorization: Bearer ' . $post['token'] . ''
-));
-curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
-curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($process, CURLOPT_POSTFIELDS, $r1);
-$result1 = curl_exec($process);
-curl_close($process);
-$arr1 = json_decode($result1, true);
-   }
+    $smsBody = json_encode(array(
+        'phoneNumber' => $post['phoneNumber'],
+        'qrId'        => $arr['result']['qr']['qrId'],
+    ), JSON_UNESCAPED_UNICODE);
+
+    $process = curl_init($params['prodUrl'] . 'SalePoints/' . $params['salePointId'] . '/Notification/SendQrUrlToClient');
+    curl_setopt($process, CURLOPT_HTTPHEADER, array(
+        'Content-Type: application/json',
+        'Accept: text/plain',
+        'Authorization: Bearer ' . $params['token']
+    ));
+    curl_setopt($process, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($process, CURLOPT_POSTFIELDS, $smsBody);
+    $result1 = curl_exec($process);
+    curl_close($process);
+    $params['sms'] = is_string($result1) ? json_decode($result1, true) : array();
+}
 ?>
-
-<div class="paritet" style="text-align: left">
-<?php if ($params['arr']['result']['urlToCreateClaim']) {?>
-<a href="<?=$params['arr']['result']['urlToCreateClaim'];?>" target="_blank">
-    <input name="" class='btn btn-default' type="button" value="<?=Loc::getMessage('PB_ORDER_BUTTON_NAME');?>">
-    </a>
-<?php }?>
-<?php if ($params['arr']['responseException']['exceptionMessage']) {
-    echo '<input name="" class="btn btn-default"  type="button" value="' . Loc::getMessage('PB_ERROR_MESSAGE_UNDEFIND') . '">';
-}?>
-<p><ol>
-    <li><?= Loc::getMessage('PB_STEP1') ?></li>
-    <li><?= Loc::getMessage('PB_STEP2') ?></li>
-    <li><?= Loc::getMessage('PB_STEP3') ?></li>
-    <li><?= Loc::getMessage('PB_STEP4') ?></li>
-    <li><?= Loc::getMessage('PB_STEP5') ?></li>
-</ol></p>
-  <!--    <pre style="white-space: pre-wrap;">
-            <?php  print_r($post);;?>
-            <hr>
-            <?php  print_r($_SERVER['HTTP_ORIGIN']);;?>
-        </pre>-->
-</div>

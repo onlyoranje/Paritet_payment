@@ -1,4 +1,4 @@
-<?
+<?php
 $MESS['PB_STRING_MODULE_INFO'] = 'Информация о модуле';
 $MESS['PB_STRING_BANK'] = 'Банк';
 $MESS['PB_BANK_PRODUCT'] = 'Банковский продукт';
@@ -26,4 +26,7 @@ $MESS["PB_PASSWORD"] = 'Пароль';
 $MESS["PB_STORE_ID"] = 'ID Магазина';
 $MESS["PB_TOKEN"] = 'токен';
 $MESS["PB_NO_SALE_POINT_ID"] = 'Не установлен ID Магазина';
+$MESS["PB_STATUS_AGENT_HEAD"] = 'Статус оплаты заказа (для автоматического перевода в «Оплачен»)';
+$MESS["PB_PAID_STATUS"] = 'Статус заявки, при котором заказ считается оплаченным';
+$MESS["PB_ORDER_PREFIX"] = 'Префикс номера заказа (как в ЛК банка)';
 

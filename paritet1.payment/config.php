@@ -1,4 +1,4 @@
-<?
+<?php
 include dirname(__FILE__) . "/install/version.php";
 $moduleId = 'paritet1.payment';
 $PB_CONFIG = array(
